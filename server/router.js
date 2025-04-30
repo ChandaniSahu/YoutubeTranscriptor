@@ -12,7 +12,7 @@ router.post('/get-transcript', async (req, res) => {
       res.json({ transcript: transcriptText });
     } catch (error) {
       console.error('Transcript fetch error:', error);
-      res.status(500).json({ error: 'Failed to fetch transcript' });
+      res.status(500).json({ error: error});
     }
   });
   
