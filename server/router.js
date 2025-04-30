@@ -4,7 +4,7 @@ const router = express.Router();
 
 router.post('/get-transcript', async (req, res) => {
     const { url } = req.body;
-  
+  console.log('run')
     try {
       const videoId = getVideoIdFromUrl(url);
       const transcriptArray = await YoutubeTranscript.fetchTranscript(videoId);
