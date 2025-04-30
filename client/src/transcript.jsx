@@ -22,7 +22,7 @@ const Transcript = ()=> {
   const fetchTranscript = async () => {
     setLoading("transcript");
     try {
-      const res = await axios.post("http://localhost:3000/get-transcript", { url });
+      const res = await axios.post("https://youtube-transcriptor-xi.vercel.app/get-transcript", { url });
       setTranscript(res.data.transcript);
     } catch (err) {
       setTranscript("Error fetching transcript.");
