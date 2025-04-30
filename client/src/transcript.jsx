@@ -23,9 +23,20 @@ const Transcript = ()=> {
     setLoading("transcript");
     try {
       const res = await axios.post("https://youtube-transcriptor-xi.vercel.app/get-transcript", { url });
+      if(!res.data.transcript || res.data.transcript === ""|| res.data.transcript === undefined){ 
+        alert("Error fetching transcript. Please check the URL or try again.")
+        setUrl('')
+        return;
+      }
+      else{
       setTranscript(res.data.transcript);
+      console.log('res',res.data.transcript)
+      }
     } catch (err) {
-      setTranscript("Error fetching transcript.");
+       setUrl('')
+      console.log("Error fetching transcript.",err);
+      alert("Error fetching transcript. Please check the URL or try again.");
+     
     } finally {
       setLoading("");
     }

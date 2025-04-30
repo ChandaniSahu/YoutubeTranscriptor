@@ -1,6 +1,10 @@
-# YouTube Transcript App
+# YouTube Transcriptor Web Application
 
-This is a React application that fetches transcripts from YouTube videos, summarizes them, generates MCQs from the transcript, and allows users to attempt the quiz with results. The app also supports features to listen to the transcript and copy content.
+This is a React web application that fetches transcripts from YouTube videos, summarizes them, generates MCQs from the transcript, and allows users to attempt the quiz with results. The app also supports features to listen to the transcript and copy content.
+
+## Live Link
+Check out the live version of the web applicaion here:
+https://youtube-transcriptor.netlify.app
 
 
 ## Features

@@ -1,28 +1,26 @@
-// server.js or your Express route
 const express = require('express');
-const { exec } = require('child_process');
+const { YoutubeTranscript } = require('youtube-transcript');
 const router = express.Router();
 
-router.post('/get-transcript', (req, res) => {
-    try{
-        const youtubeUrl = req.body.url;
-    console.log('rebody',youtubeUrl)
-    const videoId = new URL(youtubeUrl).searchParams.get("v");
-
-    exec(`python getTranscript.py ${videoId}`, (err, stdout, stderr) => {
-        if (err) {
-            console.log('errorif',err)
-            return res.json({ error: stderr || err.message });
-        }
-        res.json({ transcript: stdout });
-    });
+router.post('/get-transcript', async (req, res) => {
+    const { url } = req.body;
+  
+    try {
+      const videoId = getVideoIdFromUrl(url);
+      const transcriptArray = await YoutubeTranscript.fetchTranscript(videoId);
+      const transcriptText = transcriptArray.map(item => item.text).join(' ');
+      res.json({ transcript: transcriptText });
+    } catch (error) {
+      console.error('Transcript fetch error:', error);
+      res.status(500).json({ error: 'Failed to fetch transcript' });
     }
-    catch(e){
-        console.log('error',e)
-        return res.json({ error: e.message });
-    }
-    
-});
-
+  });
+  
+  // Helper function to extract video ID from URL
+  function getVideoIdFromUrl(url) {
+    const match = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
+    if (match && match[1]) return match[1];
+    throw new Error('Invalid YouTube URL');
+  }
 
 module.exports = router;

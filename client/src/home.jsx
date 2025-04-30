@@ -11,7 +11,7 @@ const sections = {
 const Home =()=> {
 const navigate = useNavigate();
   return (<>
-    <div className="min-h-screen flex flex-col justify-between bg-cover bg-center" style={{ backgroundImage: "url('/src/ytbg3.jpg')" }}>
+    <div className="min-h-screen flex flex-col justify-between bg-cover bg-center bg-[url('./ytbg.jpg')] " >
       <nav className="flex items-center justify-between p-6 bg-black bg-opacity-60 text-white">
         <div className="text-2xl font-bold">YouTube Transcriptor</div>
         
