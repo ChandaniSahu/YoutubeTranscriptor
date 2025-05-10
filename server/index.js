@@ -1,14 +1,13 @@
 const express = require('express');
 const app = express();
 const router = require('./router'); 
-// Assuming router.js is in the same directoryconst cors = require('cors');
 const cors = require('cors');
 
 app.use(cors());
 app.use(express.json());
 
 
-app.use(router); // Use the routes defined in router.js
+app.use('/',router); // Use the routes defined in router.js
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
