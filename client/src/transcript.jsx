@@ -16,8 +16,8 @@ const Transcript = ()=> {
   const [result, setResult] = useState({ total: 0, correct: 0, wrong: 0, unattempted: 0 });
   const [loading, setLoading] = useState("");
   const [copied, setCopied] = useState(false);
-const [speaking, setSpeaking] = useState(false);
-
+const [speaking, setSpeaking] = useState("");
+const [copyTarget, setCopyTarget] = useState("");
   const [showRlt, setShowRlt] = useState(false);
 
   const handleOptionChange = (questionIndex, option) => {
@@ -94,23 +94,27 @@ const [speaking, setSpeaking] = useState(false);
     }
   };
 
- const speakText = (text) => {
+const speakText = (text, source) => {
   const synth = window.speechSynthesis;
   const utterance = new SpeechSynthesisUtterance(text);
 
-  setSpeaking(true);
+  setSpeaking(source);
+
+  utterance.onend = () => setSpeaking("");
+  utterance.onerror = () => setSpeaking("");
+
   synth.speak(utterance);
-
-  // utterance.onend = () => setSpeaking(false); // reset after speaking ends
 };
 
-
-  
- const copyText = (text) => {
-  navigator.clipboard.writeText(text);
-  setCopied(true);
-  setTimeout(() => setCopied(false), 1000); // Reset after 2 sec
-};
+  const copyText = (text, target) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setCopyTarget(target);
+    setTimeout(() => {
+      setCopied(false);
+      setCopyTarget("");
+    }, 1000);
+  };
 
   const GenerateMCQs = async () => {
     setLoading("mcqs");
@@ -205,44 +209,37 @@ The response must be a pure JSON array of objects that can be parsed directly us
           )}
         </div>
 
-       {/* 📝 Transcript Section */}
-{transcript && (
-  <>
-    
-    <div className="relative bg-white/10 border border-white/20 rounded-xl p-4 mb-6 max-h-60 overflow-y-auto whitespace-pre-wrap text-white text-opacity-90">
-      <h2 className="text-2xl font-bold mb-[8px] text-white text-center">📝 Transcript</h2>
-     <div className="absolute top-2 right-2 flex gap-2">
-  <button onClick={() => copyText(transcript)} title='copy'>
-    {copied?'✔ copied':<FaCopy className={`text-white hover:text-yellow-400 transition `} />}
-  </button>
- {speaking ? (
+         {/* ✅ Transcript Section */}
+        {transcript && (
+          <div className="relative bg-white/10 border border-white/20 rounded-xl p-4 mb-6 max-h-60 overflow-y-auto whitespace-pre-wrap text-white text-opacity-90">
+            <h2 className="text-2xl font-bold mb-[8px] text-white text-center">📝 Transcript</h2>
+            <div className="absolute top-2 right-2 flex gap-2">
+              <button onClick={() => copyText(transcript, "transcript")} title="Copy">
+                {copied && copyTarget === "transcript" ? "✔ copied" : <FaCopy className="text-white hover:text-yellow-400 transition" />}
+              </button>
+              {speaking === "transcript" ? (
   <FaVolumeMute
     title="Mute"
     onClick={() => {
       window.speechSynthesis.cancel();
-      setSpeaking(false);
+      setSpeaking("");
     }}
     className="cursor-pointer text-white hover:text-red-400 transition"
   />
 ) : (
   <FaVolumeUp
     title="Speak"
-    onClick={() => {
-      speakText(transcript);
-    }}
+    onClick={() => speakText(transcript, "transcript")}
     className="cursor-pointer text-white hover:text-green-400 transition"
   />
 )}
-</div>
 
-      {transcript}
-    </div>
-  </>
-)}
+            </div>
+            {transcript}
+          </div>
+        )}
 
-
-
-        {transcript && !summary && (
+ {transcript && !summary && (
           <button
             onClick={SummersizeTranscript}
             disabled={loading}
@@ -252,20 +249,43 @@ The response must be a pure JSON array of objects that can be parsed directly us
           </button>
         )}
 
-{summary && (
-  <div className="relative bg-gradient-to-br from-yellow-100 via-yellow-200 to-yellow-300 text-yellow-800 p-4 rounded-2xl mb-8 shadow-md whitespace-pre-wrap">
-    <h2 className="text-2xl font-bold mb-[8px] text-center text-black">🧾 Summary</h2>
-    <div className="absolute top-2 right-2 flex gap-2">
-      <button onClick={() => copyText(summary)} title="Copy">
-        <FaCopy className="text-yellow-800 hover:text-yellow-600 transition" />
-      </button>
-      <button onClick={() => speakText(summary)} title="Speak">
-        <FaVolumeUp className="text-yellow-800 hover:text-green-600 transition" />
-      </button>
-    </div>
-    {summary}
-  </div>
+        {/* ✅ Summary Section with Reused Copy/Speak */}
+        {summary && (
+          <div className="relative bg-gradient-to-br from-yellow-100 via-yellow-200 to-yellow-300 text-yellow-800 p-4 rounded-2xl mb-8 shadow-md whitespace-pre-wrap">
+            <h2 className="text-2xl font-bold mb-[8px] text-center text-black">🧾 Summary</h2>
+            <div className="absolute top-2 right-2 flex gap-2">
+              <button onClick={() => copyText(summary, "summary")} title="Copy">
+                {copied && copyTarget === "summary" ? (
+                  <span className="text-sm font-bold text-yellow-800">✔ Copied</span>
+                ) : (
+                  <FaCopy className="text-yellow-800 hover:text-yellow-600 transition" />
+                )}
+              </button>
+              {speaking === "summary" ? (
+  <FaVolumeMute
+    title="Mute"
+    onClick={() => {
+      window.speechSynthesis.cancel();
+      setSpeaking("");
+    }}
+    className="cursor-pointer text-yellow-800 hover:text-red-400 transition"
+  />
+) : (
+  <FaVolumeUp
+    title="Speak"
+    onClick={() => speakText(summary, "summary")}
+    className="cursor-pointer text-yellow-800 hover:text-green-600 transition"
+  />
 )}
+
+            </div>
+            {summary}
+          </div>
+        )}
+
+
+
+       
 
         {transcript && mcqs.length === 0 && (
           <button
