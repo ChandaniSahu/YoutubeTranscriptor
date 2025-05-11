@@ -78,8 +78,6 @@ The app should now be accessible at http://localhost:5173.
 
 - React (frontend)
 
-- Nodejs/Expressjs (backend)
-
 - Axios (for API calls)
 
 - Tailwind CSS (for styling)

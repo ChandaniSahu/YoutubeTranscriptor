@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { FaCopy, FaVolumeUp } from "react-icons/fa";
 import ResultChart from "./resultChart";
@@ -6,6 +6,8 @@ import ResultChart from "./resultChart";
 
 const Transcript = ()=> {
   const apikey = import.meta.env.VITE_API_KEY;
+  const rapidapikey = import.meta.env.VITE_RAPIDAPI_KEY;
+  const rapidhost = import.meta.env.VITE_RAPIDAPI_HOST;
   const [url, setUrl] = useState("");
   const [transcript, setTranscript] = useState("");
   const [summary, setSummary] = useState("");
@@ -19,29 +21,56 @@ const Transcript = ()=> {
     setSelectedAnswers({ ...selectedAnswers, [questionIndex]: option });
   };
 
-  const fetchTranscript = async () => {
-    setLoading("transcript");
+
+  // useEffect(()=>{console.log('url',url)},[url])
+  
+
+ const fetchTranscript = async (url) => {
     try {
-      const res = await axios.post("https://youtube-transcriptor-cueq.vercel.app/get-transcript", { url });
-      console.log('res',res)
-      if(!res.data.transcript || res.data.transcript === ""|| res.data.transcript === undefined){ 
-        alert("Error fetching transcript. Please check the URL or try again.")
-        setUrl('')
+      // 1. Extract video ID from URL
+      console.log('url', url)
+      if (typeof url !== 'string' || !url.trim()) {
+        alert('Enter a valid URL');
         return;
       }
-      else{
-      setTranscript(res.data.transcript);
-      console.log('res',res.data.transcript)
+
+      const videoId = new URL(url.trim()).searchParams.get("v");
+
+      console.log('videoId', videoId)
+      if (!videoId) {
+        alert('Invalid YouTube URL');
+        return;
       }
-    } catch (err) {
-       setUrl('')
-      console.log("Error fetching transcript.",err);
-      alert("Error fetching transcript. Please check the URL or try again.");
-     
+
+      // 2. Set loading state while fetching
+      setLoading("transcript");
+
+      // 3. Prepare request
+      const options = {
+        method: 'GET',
+        url: 'https://youtube-transcript3.p.rapidapi.com/api/transcript',
+        params: { videoId: videoId },
+        headers: {
+          'X-RapidAPI-Key': rapidapikey,
+          'X-RapidAPI-Host': rapidhost
+        }
+      };
+
+      // 4. Make request
+      const response = await axios.request(options);
+
+      // 5. Combine transcript parts
+      const fullTranscript = response.data.transcript.map(t => t.text).join(' ');
+      console.log('Transcript:', fullTranscript);
+      setTranscript(fullTranscript);
+    } catch (error) {
+      console.error("Error:", error.message);
+      alert('Error fetching transcript. Please check the URL or try again.');
     } finally {
-      setLoading("");
+      setLoading(""); // Reset loading state after completion
     }
   };
+
 
   const SummersizeTranscript = async () => {
     setLoading("summary");
@@ -156,7 +185,7 @@ The response must be a pure JSON array of objects that can be parsed directly us
           />
           {!transcript && (
             <button
-              onClick={fetchTranscript}
+              onClick={()=>fetchTranscript(url)}
               disabled={loading}
               className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-pink-500 hover:to-yellow-500 text-white font-bold shadow-lg transform hover:scale-105 transition-all disabled:opacity-50"
             >
@@ -300,3 +329,5 @@ The response must be a pure JSON array of objects that can be parsed directly us
 }
 
 export default Transcript;
+
+
