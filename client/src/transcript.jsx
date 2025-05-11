@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { FaCopy, FaVolumeUp } from "react-icons/fa";
+import { FaCopy, FaVolumeUp , FaVolumeMute } from "react-icons/fa";
 import ResultChart from "./resultChart";
 
 
@@ -15,6 +15,9 @@ const Transcript = ()=> {
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [result, setResult] = useState({ total: 0, correct: 0, wrong: 0, unattempted: 0 });
   const [loading, setLoading] = useState("");
+  const [copied, setCopied] = useState(false);
+const [speaking, setSpeaking] = useState(false);
+
   const [showRlt, setShowRlt] = useState(false);
 
   const handleOptionChange = (questionIndex, option) => {
@@ -91,16 +94,24 @@ const Transcript = ()=> {
     }
   };
 
-  const speakText = (text) => {
-    const synth = window.speechSynthesis;
-    const utterance = new SpeechSynthesisUtterance(text);
-    synth.speak(utterance);
-  };
+ const speakText = (text) => {
+  const synth = window.speechSynthesis;
+  const utterance = new SpeechSynthesisUtterance(text);
+
+  setSpeaking(true);
+  synth.speak(utterance);
+
+  utterance.onend = () => setSpeaking(false); // reset after speaking ends
+};
+
+
   
-  const copyText = (text) => {
-    navigator.clipboard.writeText(text);
-  };
-  
+ const copyText = (text) => {
+  navigator.clipboard.writeText(text);
+  setCopied(true);
+  setTimeout(() => setCopied(false), 1000); // Reset after 2 sec
+};
+
   const GenerateMCQs = async () => {
     setLoading("mcqs");
     const content = `
@@ -200,14 +211,30 @@ The response must be a pure JSON array of objects that can be parsed directly us
     
     <div className="relative bg-white/10 border border-white/20 rounded-xl p-4 mb-6 max-h-60 overflow-y-auto whitespace-pre-wrap text-white text-opacity-90">
       <h2 className="text-2xl font-bold mb-[8px] text-white text-center">📝 Transcript</h2>
-      <div className="absolute top-2 right-2 flex gap-2">
-        <button onClick={() => copyText(transcript)} title="Copy">
-          <FaCopy className="text-white hover:text-yellow-400 transition" />
-        </button>
-        <button onClick={() => speakText(transcript)} title="Speak">
-          <FaVolumeUp className="text-white hover:text-green-400 transition" />
-        </button>
-      </div>
+     <div className="absolute top-2 right-2 flex gap-2">
+  <button onClick={() => copyText(transcript)} title='copy'>
+    {copied?'✔ copied':<FaCopy className={`text-white hover:text-yellow-400 transition `} />}
+  </button>
+ {speaking ? (
+  <FaVolumeMute
+    title="Mute"
+    onClick={() => {
+      window.speechSynthesis.cancel();
+      setSpeaking(false);
+    }}
+    className="cursor-pointer text-white hover:text-red-400 transition"
+  />
+) : (
+  <FaVolumeUp
+    title="Speak"
+    onClick={() => {
+      speakText(transcript);
+    }}
+    className="cursor-pointer text-white hover:text-green-400 transition"
+  />
+)}
+</div>
+
       {transcript}
     </div>
   </>
