@@ -101,7 +101,7 @@ const [speaking, setSpeaking] = useState(false);
   setSpeaking(true);
   synth.speak(utterance);
 
-  utterance.onend = () => setSpeaking(false); // reset after speaking ends
+  // utterance.onend = () => setSpeaking(false); // reset after speaking ends
 };
 
 
