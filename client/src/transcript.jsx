@@ -257,7 +257,7 @@ const finalHtml = mcqHtml + scoreHtml;
   `;
 
     try {
-      const res = await axios.post('http://localhost:3000/sendResult', { htmlContent: htmlContent, gmail: gmail })
+      const res = await axios.post('https://youtube-transcriptor-xavh.vercel.app/sendResult', { htmlContent: htmlContent, gmail: gmail })
 
       console.log('Response:', res.data);
       if (res.data.msg==='success') {
