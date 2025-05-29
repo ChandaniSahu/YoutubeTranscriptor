@@ -12,6 +12,7 @@ const Transcript = ()=> {
   const [transcript, setTranscript] = useState("");
   const [summary, setSummary] = useState("");
   const [mcqs, setMcqs] = useState([]);
+  const[gmail, setGmail] = useState("");
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [result, setResult] = useState({ total: 0, correct: 0, wrong: 0, unattempted: 0 });
   const [loading, setLoading] = useState("");
@@ -25,54 +26,61 @@ const [copyTarget, setCopyTarget] = useState("");
   };
 
 
-  // useEffect(()=>{console.log('url',url)},[url])
-  
 
- const fetchTranscript = async (url) => {
+const fetchTranscript = async (inputText) => {
+  try {
+    const text = inputText.trim();
+
+    // Check if it's a valid YouTube URL
+    let isValidUrl = false;
+    let videoId = null;
+
     try {
-      // 1. Extract video ID from URL
-      console.log('url', url)
-      if (typeof url !== 'string' || !url.trim()) {
-        alert('Enter a valid URL');
-        return;
-      }
+      const parsedUrl = new URL(text);
+      videoId = parsedUrl.searchParams.get("v");
+      isValidUrl = !!videoId;
+    } catch (e) {
+      isValidUrl = false;
+    }
 
-      const videoId = new URL(url.trim()).searchParams.get("v");
-
-      console.log('videoId', videoId)
-      if (!videoId) {
-        alert('Invalid YouTube URL');
-        return;
-      }
-
-      // 2. Set loading state while fetching
+    if (isValidUrl) {
+      // ✅ It's a valid YouTube URL → fetch transcript
       setLoading("transcript");
 
-      // 3. Prepare request
       const options = {
         method: 'GET',
         url: 'https://youtube-transcript3.p.rapidapi.com/api/transcript',
-        params: { videoId: videoId },
+        params: { videoId },
         headers: {
           'X-RapidAPI-Key': rapidapikey,
           'X-RapidAPI-Host': rapidhost
         }
       };
 
-      // 4. Make request
       const response = await axios.request(options);
-
-      // 5. Combine transcript parts
       const fullTranscript = response.data.transcript.map(t => t.text).join(' ');
       console.log('Transcript:', fullTranscript);
       setTranscript(fullTranscript);
-    } catch (error) {
-      console.error("Error:", error.message);
-      alert('Error fetching transcript. Please check the URL or try again.');
-    } finally {
-      setLoading(""); // Reset loading state after completion
+
+    } else {
+     const wordCount = text.split(/\s+/).length;
+const containsSpaces = /\s/.test(text); // Check for at least one space
+const isLikelyRealSentence = /^[A-Za-z0-9 ,.'"!?-]{10,}$/.test(text); // At least 10+ meaningful characters
+      if (wordCount >= 3 && containsSpaces && isLikelyRealSentence){
+        console.log("Input is a valid paragraph.");
+        setTranscript(text);
+        alert("Paragraph is valid.");
+      } else {
+        alert("Invalid input. Enter a valid YouTube URL or a proper paragraph.");
+      }
     }
-  };
+  } catch (err) {
+    console.error("Error:", err.message);
+    alert("Something went wrong.");
+  } finally {
+    setLoading("");
+  }
+};
 
 
   const SummersizeTranscript = async () => {
@@ -176,6 +184,95 @@ The response must be a pure JSON array of objects that can be parsed directly us
     </svg>
   );
 
+
+  const handleRefresh = () => {
+    setTranscript("")
+    setSummary("")
+    setResult("")
+    setMcqs([])
+    setShowRlt(false);
+    setUrl('')
+    setSelectedAnswers({});
+  
+  }
+
+  useEffect(()=>{
+    console.log('gmeail.',gmail),[gmail]
+  })
+
+  const sendRlt = async () => {
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailPattern.test(gmail)) {
+  alert('Please enter a valid email address.');
+    return;
+  }
+
+
+    setLoading('rltsending');
+
+    const mcqHtml = mcqs.map((item, index) => {
+  const isCorrect = selectedAnswers[index] === item.answer;
+  const bgColor = !selectedAnswers[index]
+    ? "#6B7280" // gray-500
+    : isCorrect
+    ? "#4ADE80" // green-400
+    : "#F87171"; // red-400
+
+  return `
+    <div style="background-color: ${bgColor}; padding: 16px; color:white; border-radius: 12px; margin-bottom: 16px; border: 1px solid #ccc;">
+      <h4 style="font-weight: bold;">${index + 1}. ${item.question}</h4>
+      <p>✅ <strong>Correct Answer:</strong> ${item.answer}: ${item.options[item.answer]}</p>
+      <p>📝 <strong>Your Answer:</strong> ${
+        selectedAnswers[index]
+          ? `${selectedAnswers[index]}: ${item.options[selectedAnswers[index]]}`
+          : "Unattempted"
+      }</p>
+    </div>
+  `;
+}).join(""); // Join array into a single HTML string
+
+// Add score section
+const scoreHtml = `
+  <div style="margin: 10px; background-color: #155dfc; padding: 20px; border-radius: 12px; color:white; margin-bottom:20px;">
+    <h2 style="font-size: 20px; font-weight:700; text-align: center;">📊 Your Score</h2>
+    <div>
+      <p style="font-size: 14px;">Total: ${result.total}</p>
+      <p style="color: #86efac;">Correct: ${result.correct}</p>
+      <p style="color: #fca5a5;">Wrong: ${result.wrong}</p>
+      <p style="color: #fde68a;">Unattempted:${result.unattempted}</p>
+    </div>
+  </div>
+`;
+
+// Combine everything
+const finalHtml = mcqHtml + scoreHtml;
+
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; background-color:#3f4695;padding:10px; border-radius: 12px;color:white; ">
+      <h2 style=" font-size:24px; font-weight:900; text-align: center;">YouTube Transcriptor Result</h2><br>
+      ${finalHtml}
+    </div>
+  `;
+
+    try {
+      const res = await axios.post('http://localhost:3000/sendResult', { htmlContent: htmlContent, gmail: gmail })
+
+      console.log('Response:', res.data);
+      if (res.data.msg==='success') {
+        alert('Result sent successfully!');
+        setGmail('');
+      } else {
+        alert('Failed to send result.');
+      }
+    } catch (error) {
+      alert('Error sending email.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 text-white flex flex-col items-center justify-start py-12 px-4">
       <div className="backdrop-blur-md bg-white/10 border border-white/20 rounded-3xl p-8 max-w-5xl w-full shadow-2xl">
@@ -196,6 +293,7 @@ The response must be a pure JSON array of objects that can be parsed directly us
               setSelectedAnswers({});
             }}
             placeholder="Paste YouTube URL..."
+             disabled={transcript !== ""}
             className="flex-1 px-6 py-3 rounded-2xl border-2 border-indigo-400 bg-white/20 focus:ring-4 focus:ring-indigo-500 focus:outline-none placeholder-white/70 text-white text-lg transition-all"
           />
           {!transcript && (
@@ -212,7 +310,7 @@ The response must be a pure JSON array of objects that can be parsed directly us
          {/* ✅ Transcript Section */}
         {transcript && (
           <div className="relative bg-white/10 border border-white/20 rounded-xl p-4 mb-6 max-h-60 overflow-y-auto whitespace-pre-wrap text-white text-opacity-90">
-            <h2 className="text-2xl font-bold mb-[8px] text-white text-center">📝 Transcript</h2>
+           <h2 className=" text-2xl font-bold mb-[8px] mt-[-5px] text-white text-center">📝 Transcript</h2>
             <div className="absolute top-2 right-2 flex gap-2">
               <button onClick={() => copyText(transcript, "transcript")} title="Copy">
                 {copied && copyTarget === "transcript" ? "✔ copied" : <FaCopy className="text-white hover:text-yellow-400 transition" />}
@@ -302,7 +400,7 @@ The response must be a pure JSON array of objects that can be parsed directly us
             <h2 className="text-2xl font-bold mb-[10px] text-center text-white">📚 Multiple Choice Questions</h2>
             {mcqs.map((item, index) => (
               <div key={index} className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/20">
-                <h4 className="text-2xl font-bold mb-4">{index + 1}. {item.question}</h4>
+                <h4 className="text-xl font-bold mb-4">{index + 1}. {item.question}</h4>
                 <div className="grid grid-cols-2 gap-4">
                   {Object.entries(item.options).map(([key, value]) => (
                     <label key={key} className="flex items-center space-x-3 cursor-pointer">
@@ -367,7 +465,29 @@ The response must be a pure JSON array of objects that can be parsed directly us
                   </div>
                 );
               })}
-            </div>
+            </div><br/>
+
+            <div className="text-center">
+               <button
+             className="bg-blue-500 text-white py-2 px-5 rounded-xl hover:bg-blue-600 "
+            onClick={handleRefresh}
+          >
+            Refresh
+          </button>
+            </div><br/>
+           
+           <div className="flex justify-center items-center space-x-[7px] mx-[auto]">
+
+              <input type='email' placeholder='Enter your email' 
+              onChange={(e) => { setGmail(e.target.value) }} value={gmail} 
+              className='border-2 border-gray-300 bg-gray rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-[230px] h-10 ' />
+
+                  <button
+                    onClick={sendRlt}
+                    className=" bg-blue-500 text-white p-[10px] rounded-xl 
+                    hover:bg-blue-600" 
+                            > {loading === "rltsending" ? <Spinner /> : "Send Result"}</button>
+             </div>
           </div>
         )}
       </div>
