@@ -20,6 +20,7 @@ const Transcript = ()=> {
 const [speaking, setSpeaking] = useState("");
 const [copyTarget, setCopyTarget] = useState("");
   const [showRlt, setShowRlt] = useState(false);
+  const [checkParagraph, setCheckParagraph] = useState(false);
 
   const handleOptionChange = (questionIndex, option) => {
     setSelectedAnswers({ ...selectedAnswers, [questionIndex]: option });
@@ -28,6 +29,7 @@ const [copyTarget, setCopyTarget] = useState("");
 
 
 const fetchTranscript = async (inputText) => {
+  console.log('entered')
   try {
     const text = inputText.trim();
 
@@ -63,13 +65,15 @@ const fetchTranscript = async (inputText) => {
       setTranscript(fullTranscript);
 
     } else {
+      console.log('right')
      const wordCount = text.split(/\s+/).length;
-const containsSpaces = /\s/.test(text); // Check for at least one space
-const isLikelyRealSentence = /^[A-Za-z0-9 ,.'"!?-]{10,}$/.test(text); // At least 10+ meaningful characters
-      if (wordCount >= 3 && containsSpaces && isLikelyRealSentence){
+      const containsWords = /[a-zA-Z]{3,}/.test(text); // At least one real word with 3+ letters
+
+      if ( text && wordCount>=1 && containsWords) {
+        setCheckParagraph(true);
         console.log("Input is a valid paragraph.");
         setTranscript(text);
-        alert("Paragraph is valid.");
+        // alert("Paragraph is valid.");
       } else {
         alert("Invalid input. Enter a valid YouTube URL or a proper paragraph.");
       }
@@ -86,7 +90,7 @@ const isLikelyRealSentence = /^[A-Za-z0-9 ,.'"!?-]{10,}$/.test(text); // At leas
   const SummersizeTranscript = async () => {
     setLoading("summary");
     const payload = {
-      contents: [{ parts: [{ text: `Summarize the following paragraph:\n\n${transcript}` }] }]
+      contents: [{ parts: [{ text: `Summarize the following paragraph or topic:\n\n${transcript}` }] }]
     };
     try {
       const response = await axios.post(
@@ -193,13 +197,11 @@ The response must be a pure JSON array of objects that can be parsed directly us
     setShowRlt(false);
     setUrl('')
     setSelectedAnswers({});
-  
+    setGmail('');
+    setCheckParagraph(false);
   }
 
-  useEffect(()=>{
-    console.log('gmeail.',gmail),[gmail]
-  })
-
+ 
   const sendRlt = async () => {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -273,6 +275,8 @@ const finalHtml = mcqHtml + scoreHtml;
     }
   };
 
+  useEffect(() => {console.log('url',url)},[url])
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 text-white flex flex-col items-center justify-start py-12 px-4">
       <div className="backdrop-blur-md bg-white/10 border border-white/20 rounded-3xl p-8 max-w-5xl w-full shadow-2xl">
@@ -302,13 +306,13 @@ const finalHtml = mcqHtml + scoreHtml;
               disabled={loading}
               className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-pink-500 hover:to-yellow-500 text-white font-bold shadow-lg transform hover:scale-105 transition-all disabled:opacity-50"
             >
-              {loading === "transcript" ? <Spinner /> : "Get Transcript"}
+              {loading === "transcript" ? <Spinner /> : "Get Result"}
             </button>
           )}
         </div>
 
          {/* ✅ Transcript Section */}
-        {transcript && (
+        {transcript && !checkParagraph && (
           <div className="relative bg-white/10 border border-white/20 rounded-xl p-4 mb-6 max-h-60 overflow-y-auto whitespace-pre-wrap text-white text-opacity-90">
            <h2 className=" text-2xl font-bold mb-[8px] mt-[-5px] text-white text-center">📝 Transcript</h2>
             <div className="absolute top-2 right-2 flex gap-2">
