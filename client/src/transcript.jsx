@@ -29,24 +29,23 @@ const [copyTarget, setCopyTarget] = useState("");
 
 
 const fetchTranscript = async (inputText) => {
-  console.log('entered')
+  console.log('entered');
   try {
     const text = inputText.trim();
 
-    // Check if it's a valid YouTube URL
-    let isValidUrl = false;
     let videoId = null;
+    const youtubeRegex =
+      /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
 
-    try {
-      const parsedUrl = new URL(text);
-      videoId = parsedUrl.searchParams.get("v");
-      isValidUrl = !!videoId;
-    } catch (e) {
-      isValidUrl = false;
+    const match = text.match(youtubeRegex);
+    if (match && match[1] && match[1].length === 11) {
+      videoId = match[1];
     }
 
-    if (isValidUrl) {
-      // ✅ It's a valid YouTube URL → fetch transcript
+    const isYouTubeLike = text.includes("youtube.com") || text.includes("youtu.be");
+
+    if (videoId) {
+      // ✅ Valid YouTube URL with valid video ID
       setLoading("transcript");
 
       const options = {
@@ -64,18 +63,20 @@ const fetchTranscript = async (inputText) => {
       console.log('Transcript:', fullTranscript);
       setTranscript(fullTranscript);
 
+    } else if (isYouTubeLike) {
+      // ❌ It's a malformed YouTube URL (has youtube.com but no valid video ID)
+      alert("❌ Invalid YouTube URL. Please enter a correct one.");
     } else {
-      console.log('right')
-     const wordCount = text.split(/\s+/).length;
-      const containsWords = /[a-zA-Z]{3,}/.test(text); // At least one real word with 3+ letters
+      // Not a YouTube URL → check if it's a paragraph
+      const wordCount = text.split(/\s+/).length;
+      const containsWords = /[a-zA-Z]{3,}/.test(text);
 
-      if ( text && wordCount>=1 && containsWords) {
+      if (text && wordCount >= 1 && containsWords) {
         setCheckParagraph(true);
         console.log("Input is a valid paragraph.");
         setTranscript(text);
-        // alert("Paragraph is valid.");
       } else {
-        alert("Invalid input. Enter a valid YouTube URL or a proper paragraph.");
+        alert("❌ Invalid input. Please enter a valid YouTube URL or a proper paragraph.");
       }
     }
   } catch (err) {
@@ -85,6 +86,7 @@ const fetchTranscript = async (inputText) => {
     setLoading("");
   }
 };
+
 
 
   const SummersizeTranscript = async () => {
@@ -98,9 +100,27 @@ const fetchTranscript = async (inputText) => {
         payload
       );
       const summary = response.data.candidates[0]?.content?.parts[0]?.text;
-      setSummary(summary);
+       
+      if (
+        summary.includes('paragraph or topic')
+        ||summary.includes('cannot be summarized')
+        ||summary.includes('random characters')
+        ||summary.includes(`"${transcript}"`)
+        ||summary.includes('summarize')) {
+        alert("❌ Your given topic or paragraph is invalid");
+        setSummary("");
+        setUrl("");
+        setTranscript("");
+        return;
+      }
+      else{
+        setSummary(summary);
+        console.log('passed summary')
+      }
+      
     } catch (error) {
       console.error('Error in summarizing the transcript:', error);
+      alert('❌ something went wrong')
     } finally {
       setLoading("");
     }
@@ -153,11 +173,25 @@ The response must be a pure JSON array of objects that can be parsed directly us
         payload
       );
       const mcqs = response.data.candidates[0]?.content?.parts[0]?.text;
-      const stringJSON = mcqs.match(/\[.*\]/s)?.[0];
+
+     if (mcqs.includes('"question"')) {
+  console.log("✅ Success: Valid content received");
+const stringJSON = mcqs.match(/\[.*\]/s)?.[0];
       const jsn = JSON.parse(stringJSON);
       setMcqs(jsn);
+} else {
+  alert('❌ your input is not valid')
+  setUrl("");
+        setTranscript("");
+        setSummary("");
+        setMcqs([]);
+  console.log(" Failed: Empty or invalid content");
+}
+      
+
     } catch (error) {
       console.error('Error in generating MCQs:', error);
+      alert('❌ something went wrong')
     } finally {
       setLoading("");
     }
@@ -263,13 +297,13 @@ const finalHtml = mcqHtml + scoreHtml;
 
       console.log('Response:', res.data);
       if (res.data.msg==='success') {
-        alert('Result sent successfully!');
+        alert('✅ Result sent successfully!');
         setGmail('');
       } else {
-        alert('Failed to send result.');
+        alert('❌ Failed to send result.');
       }
     } catch (error) {
-      alert('Error sending email.');
+      alert('❌ Error sending email.');
     } finally {
       setLoading(false);
     }
@@ -284,22 +318,25 @@ const finalHtml = mcqHtml + scoreHtml;
           🚀 YouTube Transcritor
         </h1>
 
-        <div className="flex flex-col md:flex-row items-center gap-4 mb-8">
-          <input
-            type="text"
-            value={url}
-            onChange={(e) => {
-              setUrl(e.target.value);
-              setTranscript("");
-              setSummary("");
-              setMcqs([]);
-              setShowRlt(false);
-              setSelectedAnswers({});
-            }}
-            placeholder="Paste YouTube URL..."
-             disabled={transcript !== ""}
-            className="flex-1 px-6 py-3 rounded-2xl border-2 border-indigo-400 bg-white/20 focus:ring-4 focus:ring-indigo-500 focus:outline-none placeholder-white/70 text-white text-lg transition-all"
-          />
+        <div className="flex flex-col items-center gap-4 mb-8">
+          <textarea
+  value={url}
+  onChange={(e) => {
+    setUrl(e.target.value);
+    setTranscript("");
+    setSummary("");
+    setMcqs([]);
+    setShowRlt(false);
+    setSelectedAnswers({});
+  }}
+  onInput={(e) => {
+    e.target.style.height = "auto"; // Reset height
+    e.target.style.height = e.target.scrollHeight + "px"; // Set new height
+  }}
+  placeholder="Paste YouTube URL..."
+  disabled={transcript !== ""}
+  className="w-full h-[53px] max-w-[700px] px-6 py-3 rounded-2xl border-2 border-indigo-400 bg-white/20 focus:ring-4 focus:ring-indigo-500 focus:outline-none placeholder-white/70 text-white text-lg transition-all overflow-hidden"
+/>
           {!transcript && (
             <button
               onClick={()=>fetchTranscript(url)}
@@ -480,7 +517,7 @@ const finalHtml = mcqHtml + scoreHtml;
           </button>
             </div><br/>
            
-           <div className="flex justify-center items-center space-x-[7px] mx-[auto]">
+           <div className="flex-wrap space-y-[10px] flex justify-center items-center space-x-[7px] mx-[auto]">
 
               <input type='email' placeholder='Enter your email' 
               onChange={(e) => { setGmail(e.target.value) }} value={gmail} 
