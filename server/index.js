@@ -24,7 +24,24 @@ app.post('/sendResult', async (req, res) => {
         from: 'rrrsahu2005@gmail.com',
         to: gmail,
         subject: 'YouTube Transcriptor Result',
-html: htmlContent
+html: `
+<div style="font-family: Arial, sans-serif; color: #333; font-size: 16px;">
+  <p style="margin: 0 0 15px 0;">Hi , Dear User</p>
+
+  <p style="margin: 0 0 20px 0;">Here are the results of your quiz :</p>
+
+  ${htmlContent}
+  <!-- Place your dynamic quiz question blocks here -->
+
+  <p style="margin: 30px 0 10px 0; color: #777; font-size: 14px;">
+    If you're not the intended recipient, please ignore this email.
+  </p>
+
+  <p style="margin: 0; font-size: 16px;">
+    Best regards,<br/>
+    <strong style="color: #555;">Tech Experts </strong>
+  </p>
+</div>`
 
      };
 

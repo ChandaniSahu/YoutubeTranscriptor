@@ -19,15 +19,12 @@ const ResultChart = ({ result }) => {
   useEffect(() => {
     const handleResize = () => {
       const width = window.innerWidth;
-      if (width <= 450) {
-        setChartSize({ width: 160, height: 270, radius: 60 });
-      }
-       else if (width <= 390) {
-        setChartSize({ width: 120, height: 220, radius: 20 });
-      }
-      else {
-        setChartSize({ width: 200, height: 300, radius: 100 });
-      }
+      if (width <= 500) {
+  setChartSize({ width: 200, height: 300, radius: 80 });
+} else {
+  setChartSize({ width: 200, height: 300, radius: 100 });
+}
+
     };
 
     handleResize(); // run on first load
@@ -37,25 +34,26 @@ const ResultChart = ({ result }) => {
   }, []);
 
   return (
-    <div className="flex justify-center">
-      <PieChart width={chartSize.width} height={chartSize.height}>
-        <Pie
-          data={data}
-          dataKey="value"
-          nameKey="name"
-          cx="50%"
-          cy="50%"
-          outerRadius={chartSize.radius}
-          label
-        >
-          {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-          ))}
-        </Pie>
-        <Tooltip />
-        <Legend />
-      </PieChart>
-    </div>
+    
+
+    <PieChart width={chartSize.width} height={chartSize.height}>
+      <Pie
+        data={data}
+        dataKey="value"
+        nameKey="name"
+        cx="50%"
+        cy="50%"
+        outerRadius={chartSize.radius}
+        label
+      >
+        {data.map((entry, index) => (
+          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+        ))}
+      </Pie>
+      <Tooltip  />
+      <Legend  />
+    </PieChart>
+
   );
 };
 

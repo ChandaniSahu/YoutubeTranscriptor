@@ -1,2 +1,22 @@
 @import "tailwindcss";
 
+
+
+@media (max-width: 634px){
+    .inputField {
+       height: 75px;
+    }                                                                                                       
+}
+
+@media (max-width: 390px){
+    .inputField {
+       height: 103px;
+    }                                                                                                       
+}
+
+@media (max-width: 516px) {
+  .answers {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}

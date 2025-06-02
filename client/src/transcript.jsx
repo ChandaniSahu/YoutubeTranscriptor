@@ -69,7 +69,7 @@ const fetchTranscript = async (inputText) => {
     } else {
       // Not a YouTube URL → check if it's a paragraph
       const wordCount = text.split(/\s+/).length;
-      const containsWords = /[a-zA-Z]{3,}/.test(text);
+      const containsWords = /[a-zA-Z]/.test(text);
 
       if (text && wordCount >= 1 && containsWords) {
         setCheckParagraph(true);
@@ -92,7 +92,13 @@ const fetchTranscript = async (inputText) => {
   const SummersizeTranscript = async () => {
     setLoading("summary");
     const payload = {
-      contents: [{ parts: [{ text: `Summarize the following paragraph or topic:\n\n${transcript}` }] }]
+      contents: [{ parts: [{
+          text: `If the input is a paragraph, summarize it clearly.  
+If the input is a topic, explain it in one paragraph.  
+If the input is meaningless, random, or not understandable, respond only with: "failed".  
+  
+Input: ${transcript}`
+        }] }]
     };
     try {
       const response = await axios.post(
@@ -101,12 +107,7 @@ const fetchTranscript = async (inputText) => {
       );
       const summary = response.data.candidates[0]?.content?.parts[0]?.text;
        
-      if (
-        summary.includes('paragraph or topic')
-        ||summary.includes('cannot be summarized')
-        ||summary.includes('random characters')
-        ||summary.includes(`"${transcript}"`)
-        ||summary.includes('summarize')) {
+      if ( summary.includes('failed')) {
         alert("❌ Your given topic or paragraph is invalid");
         setSummary("");
         setUrl("");
@@ -272,7 +273,7 @@ const stringJSON = mcqs.match(/\[.*\]/s)?.[0];
 const scoreHtml = `
   <div style="margin: 10px; background-color: #155dfc; padding: 20px; border-radius: 12px; color:white; margin-bottom:20px;">
     <h2 style="font-size: 20px; font-weight:700; text-align: center;">📊 Your Score</h2>
-    <div>
+    <div style='font-weight: 600;'>
       <p style="font-size: 14px;">Total: ${result.total}</p>
       <p style="color: #86efac;">Correct: ${result.correct}</p>
       <p style="color: #fca5a5;">Wrong: ${result.wrong}</p>
@@ -333,9 +334,9 @@ const finalHtml = mcqHtml + scoreHtml;
     e.target.style.height = "auto"; // Reset height
     e.target.style.height = e.target.scrollHeight + "px"; // Set new height
   }}
-  placeholder="Paste YouTube URL..."
+  placeholder="Enter a 📺 YouTube URL , 📝 topic name , or 📄 paragraph..."
   disabled={transcript !== ""}
-  className="w-full h-[53px] max-w-[700px] px-6 py-3 rounded-2xl border-2 border-indigo-400 bg-white/20 focus:ring-4 focus:ring-indigo-500 focus:outline-none placeholder-white/70 text-white text-lg transition-all overflow-hidden"
+  className="inputField w-full h-[53px] max-w-[700px] px-6 py-3 rounded-2xl border-2 border-indigo-400 bg-white/20 focus:ring-4 focus:ring-indigo-500 focus:outline-none placeholder-white/70 text-white text-lg transition-all overflow-hidden"
 />
           {!transcript && (
             <button
@@ -442,16 +443,20 @@ const finalHtml = mcqHtml + scoreHtml;
             {mcqs.map((item, index) => (
               <div key={index} className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/20">
                 <h4 className="text-xl font-bold mb-4">{index + 1}. {item.question}</h4>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 answers">
                   {Object.entries(item.options).map(([key, value]) => (
                     <label key={key} className="flex items-center space-x-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name={`question-${index}`}
-                        value={key}
-                        onChange={() => handleOptionChange(index, key)}
-                        className="accent-pink-500 scale-125"
-                      />
+                     <input
+                     type="radio"
+                     name={`question-${index}`}
+                     value={key}
+                     onChange={() => {
+                     if (!showRlt) handleOptionChange(index, key);
+                     }}
+                     disabled={showRlt}
+                     className={`scale-125 accent-pink-500 disabled:cursor-not-allowed`}
+                    />
+
                       <span>{key}: {value}</span>
                     </label>
                   ))}
@@ -475,13 +480,13 @@ const finalHtml = mcqHtml + scoreHtml;
           <div className="mt-[10px] rounded-2xl p-6 mb-8 shadow-[0_4px_60px_rgba(186,85,211,0.6)] " >
            {/* bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600  */}
            <h2 className="text-2xl font-extrabold mb-[10px] text-center text-white">🔍 Result</h2><br/>
-              <div className=" m-[auto] w-full h-[380px] bg-blue-600 rounded-2xl p-[5px]  mb-[20px] shadow-lg">
+              <div className="py-[15px]  m-[auto] w-full h-auto bg-blue-600 rounded-2xl  mb-[20px] shadow-lg">
              <h2 className="text-2xl font-bold text-center">📊 Your Score</h2>
-             <div className="flex justify-around items-center">
-              <div > <p className="text-lg">Total: {result.total}</p>
-              <p className="text-green-300">Correct: {result.correct}</p>
-              <p className="text-red-300">Wrong: {result.wrong}</p>
-              <p className="text-yellow-300">Unattempted: {result.unattempted}</p>
+             <div className="flex mt-[10px] justify-around items-center flex-wrap ">
+              <div className="font-[600]"> <p className="text-lg ">Total: {result.total}</p>
+              <p className="text-green-300 ">Correct: {result.correct}</p>
+              <p className="text-red-300 ">Wrong: {result.wrong}</p>
+              <p className="text-yellow-300 ">Unattempted: {result.unattempted}</p>
               </div>
               <ResultChart result={result} />
              </div>
