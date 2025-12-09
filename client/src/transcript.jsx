@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { FaCopy, FaVolumeUp , FaVolumeMute } from "react-icons/fa";
 import ResultChart from "./resultChart";
-
+import { GoogleGenAI } from '@google/genai';
 
 const Transcript = ()=> {
   const apikey = import.meta.env.VITE_API_KEY;
@@ -26,6 +26,8 @@ const [copyTarget, setCopyTarget] = useState("");
     setSelectedAnswers({ ...selectedAnswers, [questionIndex]: option });
   };
 
+  const geminiApiKey = apikey; // Your working key
+const ai = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
 
 
 const fetchTranscript = async (inputText) => {
@@ -59,7 +61,7 @@ const fetchTranscript = async (inputText) => {
       };
 
       const response = await axios.request(options);
-      const fullTranscript = response.data.transcript.map(t => t.text).join(' ');
+      const fullTranscript = response.data.transcript?.map(t => t.text).join(' ');
       console.log('Transcript:', fullTranscript);
       setTranscript(fullTranscript);
 
@@ -90,50 +92,68 @@ const fetchTranscript = async (inputText) => {
 
 
   const SummersizeTranscript = async () => {
-    setLoading("summary");
-    const payload = {
-      contents: [{ parts: [{
-          text: `If the input is a paragraph, summarize it clearly.  
+  if (!ai) {
+    alert("API Key not found. Please check your API configuration.");
+    return;
+  }
+  
+  setLoading("summary");
+  
+  const promptText = `If the input is a paragraph, summarize it clearly.  
 If the input is a topic, explain it in one paragraph.  
 If the input is meaningless, random, or not understandable, respond only with: "failed".  
   
-Input: ${transcript}`
-        }] }]
-    };
-    try {
-const response = await axios.post(
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-  payload,
-  {
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": apikey,
-    },
-  }
-);
+Input: ${transcript}`;
 
+  try {
+    const result = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ role: "user", parts: [{ text: promptText }] }],
+      config: {
+        temperature: 0.7,
+        maxOutputTokens: 1000,
+      }
+    });
 
-      const summary = response.data.candidates[0]?.content?.parts[0]?.text;
-       
-      if ( summary.includes('failed')) {
-        alert("❌ Your given topic or paragraph is invalid");
-        setSummary("");
-        setUrl("");
-        setTranscript("");
-        return;
-      }
-      else{
-        setSummary(summary);
-        console.log('passed summary')
-      }
-      
-    } catch (error) {
-      console.error('Error in summarizing the transcript:', error);
-      alert('❌ something went wrong')
-    } finally {
-      setLoading("");
+    // Extract text from proper path
+    const summaryText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    console.log('Summary Response:', result);
+    console.log('Extracted summary:', summaryText);
+    
+    if (summaryText && summaryText.includes('failed')) {
+      alert("❌ Your given topic or paragraph is invalid");
+      setSummary("");
+      setUrl("");
+      setTranscript("");
+      return;
+    } else if (summaryText) {
+      setSummary(summaryText);
+      console.log('passed summary');
+    } else {
+      // Handle blocked responses
+      const finishReason = result?.candidates?.[0]?.finishReason;
+      alert(`Summary blocked. Reason: ${finishReason}`);
+      setSummary("");
     }
-  };
+    
+  } catch (error) {
+    console.error('Error in summarizing the transcript:', error);
+    let errorMessage = "Failed to summarize.";
+    
+    if (error.message.includes("429")) {
+      errorMessage = "API quota exceeded. Please try again later.";
+    } else if (error.message.includes("401") || error.message.includes("403")) {
+      errorMessage = "Invalid API key. Please check your API key.";
+    } else {
+      errorMessage = error.message || "An unknown error occurred.";
+    }
+    
+    alert(`❌ ${errorMessage}`);
+  } finally {
+    setLoading("");
+  }
+};
 
 const speakText = (text, source) => {
   const synth = window.speechSynthesis;
@@ -158,8 +178,14 @@ const speakText = (text, source) => {
   };
 
   const GenerateMCQs = async () => {
-    setLoading("mcqs");
-    const content = `
+  if (!ai) {
+    alert("API Key not found. Please check your API configuration.");
+    return;
+  }
+  
+  setLoading("mcqs");
+  
+  const content = `
 Get me MCQ questions from this ${transcript} in the format below. 
 The response must be a pure JSON array of objects that can be parsed directly using JSON.parse():
 [
@@ -175,36 +201,80 @@ The response must be a pure JSON array of objects that can be parsed directly us
   }
 ]
 `;
-    const payload = { contents: [{ parts: [{ text: content }] }] };
-    try {
-      const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apikey}`,
-        payload
-      );
-      const mcqs = response.data.candidates[0]?.content?.parts[0]?.text;
 
-     if (mcqs.includes('"question"')) {
-  console.log("✅ Success: Valid content received");
-const stringJSON = mcqs.match(/\[.*\]/s)?.[0];
-      const jsn = JSON.parse(stringJSON);
-      setMcqs(jsn);
-} else {
-  alert('❌ your input is not valid')
-  setUrl("");
+  try {
+    const result = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ role: "user", parts: [{ text: content }] }],
+      config: {
+        temperature: 0.7,
+        maxOutputTokens: 4000, // Increased for MCQ generation
+      }
+    });
+
+    console.log('MCQ API Response:', result);
+
+    // Extract text from proper path
+    const mcqsText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const finishReason = result?.candidates?.[0]?.finishReason;
+    
+    if (finishReason === 'MAX_TOKENS') {
+      console.warn('MCQ response truncated due to token limit');
+    }
+
+    if (mcqsText && mcqsText.includes('"question"')) {
+      console.log("✅ Success: Valid content received");
+      
+      // Try to extract JSON
+      try {
+        // Remove markdown code blocks if present
+        let cleanedText = mcqsText.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
+        
+        // Extract JSON array
+        const jsonMatch = cleanedText.match(/\[[\s\S]*\]/s);
+        
+        if (jsonMatch) {
+          const stringJSON = jsonMatch[0];
+          const jsn = JSON.parse(stringJSON);
+          setMcqs(jsn);
+        } else {
+          // Try to parse entire text as JSON
+          const jsn = JSON.parse(cleanedText);
+          setMcqs(jsn);
+        }
+      } catch (parseError) {
+        console.error('JSON Parse Error:', parseError);
+        alert('❌ Failed to parse MCQ response. The format might be incorrect.');
+        setUrl("");
         setTranscript("");
         setSummary("");
         setMcqs([]);
-  console.log(" Failed: Empty or invalid content");
-}
-      
-
-    } catch (error) {
-      console.error('Error in generating MCQs:', error);
-      alert('❌ something went wrong')
-    } finally {
-      setLoading("");
+      }
+    } else {
+      alert('❌ Your input is not valid or API returned empty response');
+      setUrl("");
+      setTranscript("");
+      setSummary("");
+      setMcqs([]);
     }
-  };
+
+  } catch (error) {
+    console.error('Error in generating MCQs:', error);
+    
+    let errorMessage = "Failed to generate MCQs.";
+    if (error.message.includes("429")) {
+      errorMessage = "API quota exceeded. Please try again later.";
+    } else if (error.message.includes("401") || error.message.includes("403")) {
+      errorMessage = "Invalid API key. Please check your API key.";
+    } else {
+      errorMessage = error.message || "An unknown error occurred.";
+    }
+    
+    alert(`❌ ${errorMessage}`);
+  } finally {
+    setLoading("");
+  }
+};
 
   const CalculateResult = () => {
     setLoading("result");
@@ -256,7 +326,7 @@ const stringJSON = mcqs.match(/\[.*\]/s)?.[0];
 
     setLoading('rltsending');
 
-    const mcqHtml = mcqs.map((item, index) => {
+    const mcqHtml = mcqs?.map((item, index) => {
   const isCorrect = selectedAnswers[index] === item.answer;
   const bgColor = !selectedAnswers[index]
     ? "#6B7280" // gray-500
@@ -448,11 +518,11 @@ const finalHtml = mcqHtml + scoreHtml;
         {mcqs.length > 0 && (
           <div className="space-y-8  shadow-[0_4px_60px_rgba(186,85,211,0.6)] bg-[transparent] rounded-2xl p-6 mb-8">
             <h2 className="text-2xl font-bold mb-[10px] text-center text-white">📚 Multiple Choice Questions</h2>
-            {mcqs.map((item, index) => (
+            {mcqs?.map((item, index) => (
               <div key={index} className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/20">
                 <h4 className="text-xl font-bold mb-4">{index + 1}. {item.question}</h4>
                 <div className="grid grid-cols-2 gap-4 answers">
-                  {Object.entries(item.options).map(([key, value]) => (
+                  {Object.entries(item.options)?.map(([key, value]) => (
                     <label key={key} className="flex items-center space-x-3 cursor-pointer">
                      <input
                      type="radio"
@@ -502,7 +572,7 @@ const finalHtml = mcqHtml + scoreHtml;
             
 
             <div className="space-y-6">
-              {mcqs.map((item, index) => {
+              {mcqs?.map((item, index) => {
                 const isCorrect = selectedAnswers[index] === item.answer;
                 const bgColor = !selectedAnswers[index]
                   ? "bg-gray-500"
