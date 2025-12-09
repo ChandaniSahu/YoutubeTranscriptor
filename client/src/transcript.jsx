@@ -101,8 +101,8 @@ Input: ${transcript}`
         }] }]
     };
     try {
-     const response = await axios.post(
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent",
+const response = await axios.post(
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
   payload,
   {
     headers: {
@@ -111,6 +111,7 @@ Input: ${transcript}`
     },
   }
 );
+
 
       const summary = response.data.candidates[0]?.content?.parts[0]?.text;
        
