@@ -101,10 +101,17 @@ Input: ${transcript}`
         }] }]
     };
     try {
-      const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apikey}`,
-        payload
-      );
+     const response = await axios.post(
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent",
+  payload,
+  {
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apikey,
+    },
+  }
+);
+
       const summary = response.data.candidates[0]?.content?.parts[0]?.text;
        
       if ( summary.includes('failed')) {
